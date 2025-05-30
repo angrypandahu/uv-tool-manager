@@ -11,7 +11,7 @@ const execAsync = promisify(exec);
 export function activate(context: vscode.ExtensionContext) {
 	console.log('扩展开始激活...');
 
-	const provider = new UvToolProvider();
+	const provider = new UvToolProvider(context);
 	vscode.window.registerTreeDataProvider('myProjects', provider);
 
 	// 注册刷新命令
@@ -44,6 +44,13 @@ export function activate(context: vscode.ExtensionContext) {
 				terminal.show();
 				terminal.sendText(item.caseCommand);
 			}
+		})
+	);
+
+	// 注册删除用例命令
+	context.subscriptions.push(
+		vscode.commands.registerCommand('myProjects.deleteCase', (item: CaseTreeItem) => {
+			provider.deleteCase(item);
 		})
 	);
 }
@@ -80,6 +87,12 @@ class CaseTreeItem extends UvTreeItem {
 	}
 }
 
+interface PersistedCase {
+	commandKey: string;
+	caseName: string;
+	caseCommand: string;
+}
+
 class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 	private _onDidChangeTreeData: vscode.EventEmitter<UvTreeItem | undefined | void> = new vscode.EventEmitter<UvTreeItem | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<UvTreeItem | undefined | void> = this._onDidChangeTreeData.event;
@@ -87,8 +100,11 @@ class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 	private uvToolRoot: UvTreeItem | null = null;
 	private lastTasksRoot: UvTreeItem;
 	private commandCases: Map<string, CaseTreeItem[]> = new Map<string, CaseTreeItem[]>();
+	private context: vscode.ExtensionContext;
+	private static CASES_KEY = 'uvCases';
 
-	constructor() {
+	constructor(context: vscode.ExtensionContext) {
+		this.context = context;
 		this.lastTasksRoot = new UvTreeItem('Last Tasks', vscode.TreeItemCollapsibleState.Collapsed, [], new vscode.ThemeIcon('folder'));
 		this.refresh();
 	}
@@ -96,6 +112,26 @@ class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 	async refresh() {
 		await this.loadData();
 		this._onDidChangeTreeData.fire();
+	}
+
+	private loadPersistedCases() {
+		const arr = this.context.globalState.get<PersistedCase[]>(UvToolProvider.CASES_KEY, []);
+		this.commandCases.clear();
+		for (const c of arr) {
+			const cases = this.commandCases.get(c.commandKey) || [];
+			cases.push(new CaseTreeItem(c.caseName, c.caseCommand));
+			this.commandCases.set(c.commandKey, cases);
+		}
+	}
+
+	private savePersistedCases() {
+		const arr: PersistedCase[] = [];
+		for (const [commandKey, cases] of this.commandCases.entries()) {
+			for (const c of cases) {
+				arr.push({ commandKey, caseName: c.caseName, caseCommand: c.caseCommand });
+			}
+		}
+		this.context.globalState.update(UvToolProvider.CASES_KEY, arr);
 	}
 
 	async loadData() {
@@ -127,6 +163,7 @@ class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 		} catch {
 			this.uvToolRoot = new UvTreeItem('UV Tool List', vscode.TreeItemCollapsibleState.None, [], new vscode.ThemeIcon('folder'));
 		}
+		this.loadPersistedCases();
 	}
 
 	getTreeItem(element: UvTreeItem): vscode.TreeItem {
@@ -154,10 +191,25 @@ class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 			const cases = this.commandCases.get(key) || [];
 			cases.push(new CaseTreeItem(caseName, caseCommand));
 			this.commandCases.set(key, cases);
+			this.savePersistedCases();
 			console.log(`[addCaseToCommand] 添加用例: ${caseName}, key: ${key}, 当前用例数: ${cases.length}`);
 			this._onDidChangeTreeData.fire(commandItem);
 		}
 	}
+
+	deleteCase(item: CaseTreeItem) {
+		for (const [key, cases] of this.commandCases.entries()) {
+			console.log(`[deleteCase] 删除用例: ${item.caseName}, key: ${key}, 当前用例数: ${cases.length}`);
+			const idx = cases.findIndex(c => c.caseName === item.caseName && c.caseCommand === item.caseCommand);
+			if (idx !== -1) {
+				cases.splice(idx, 1);
+				this.savePersistedCases();
+				this._onDidChangeTreeData.fire();
+				break;
+			}
+		}
+	}
+
 	private getCommandKey(commandItem: UvTreeItem): string {
 		return `${commandItem.parent?.label || ''}::${commandItem.label}`;
 	}

@@ -38,12 +38,18 @@
 			},
 			{
 				"command": "myProjects.createCase",
+				"icon": "$(add)",
 				"title": "创建用例"
 			},
 			{
 				"command": "myProjects.runCase",
 				"icon": "$(play)",
 				"title": "执行用例"
+			},
+			{
+				"command": "myProjects.deleteCase",
+				"icon": "$(trash)",
+				"title": "删除用例"
 			}
 		],
 		"viewsContainers": {
@@ -88,6 +94,12 @@
 					"when": "view == myProjects && viewItem == uvCase",
 					"group": "inline",
 					"title": "$(play)"
+				},
+				{
+					"command": "myProjects.deleteCase",
+					"when": "view == myProjects && viewItem == uvCase",
+					"group": "inline",
+					"title": "$(trash)"
 				}
 			]
 		}
