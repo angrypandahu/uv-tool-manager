@@ -1,64 +1,102 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "helloworld-sample" is now active!');
+	console.log('扩展开始激活...');
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('extension.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
+	const provider = new UvToolProvider();
+	vscode.window.registerTreeDataProvider('myProjects', provider);
 
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World panda222!');
-	});
-
-	context.subscriptions.push(disposable);
-
-	const projectProvider = new ProjectProvider();
-	vscode.window.registerTreeDataProvider('myProjects', projectProvider);
-
-	// 注册刷新命令（可选）
+	// 注册刷新命令
 	context.subscriptions.push(
-		vscode.commands.registerCommand('myProjects.refresh', () => projectProvider.refresh())
+		vscode.commands.registerCommand('myProjects.refresh', () => provider.refresh())
+	);
+
+	// 注册创建用例命令
+	context.subscriptions.push(
+		vscode.commands.registerCommand('myProjects.createCase', (item: UvTreeItem) => {
+			vscode.window.showInformationMessage(`为 ${item.label} 创建用例`);
+		})
 	);
 }
 
-class ProjectItem extends vscode.TreeItem {
+class UvTreeItem extends vscode.TreeItem {
 	constructor(
 		public readonly label: string,
-		public readonly path: string
+		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+		public readonly children: UvTreeItem[] = [],
+		public readonly iconPath?: vscode.ThemeIcon,
+		public readonly contextValue?: string
 	) {
-		super(label, vscode.TreeItemCollapsibleState.None);
-		this.tooltip = path;
-		this.description = path;
+		super(label, collapsibleState);
+		if (iconPath) {
+			this.iconPath = iconPath;
+		}
+		if (contextValue) {
+			this.contextValue = contextValue;
+		}
 	}
 }
 
-class ProjectProvider implements vscode.TreeDataProvider<ProjectItem> {
-	private _onDidChangeTreeData: vscode.EventEmitter<ProjectItem | undefined | void> = new vscode.EventEmitter<ProjectItem | undefined | void>();
-	readonly onDidChangeTreeData: vscode.Event<ProjectItem | undefined | void> = this._onDidChangeTreeData.event;
+class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
+	private _onDidChangeTreeData: vscode.EventEmitter<UvTreeItem | undefined | void> = new vscode.EventEmitter<UvTreeItem | undefined | void>();
+	readonly onDidChangeTreeData: vscode.Event<UvTreeItem | undefined | void> = this._onDidChangeTreeData.event;
 
-	private projects: ProjectItem[] = [
-		new ProjectItem('示例项目1', '/Users/xxx/project1'),
-		new ProjectItem('示例项目2', '/Users/xxx/project2')
-	];
+	private uvToolRoot: UvTreeItem | null = null;
+	private lastTasksRoot: UvTreeItem;
 
-	getTreeItem(element: ProjectItem): vscode.TreeItem {
+	constructor() {
+		this.lastTasksRoot = new UvTreeItem('Last Tasks', vscode.TreeItemCollapsibleState.Collapsed, [], new vscode.ThemeIcon('folder'));
+		this.refresh();
+	}
+
+	async refresh() {
+		await this.loadData();
+		this._onDidChangeTreeData.fire();
+	}
+
+	async loadData() {
+		try {
+			const { stdout } = await execAsync('uv tool list');
+			const lines = stdout.split('\n').map(line => line.trim()).filter(line => line);
+
+			// 解析格式：包名 vX.X.X，后跟若干 - 工具名
+			const uvToolChildren: UvTreeItem[] = [];
+			let currentPkg: UvTreeItem | null = null;
+			for (const line of lines) {
+				if (/^[^-\s].* v\d+\.\d+\.\d+/.test(line)) {
+					// 包名+版本号
+					currentPkg = new UvTreeItem(line, vscode.TreeItemCollapsibleState.Collapsed, [], new vscode.ThemeIcon('package'));
+					uvToolChildren.push(currentPkg);
+				} else if (line.startsWith('- ') && currentPkg) {
+					// 工具名
+					const toolName = line.replace(/^-\s*/, '');
+					currentPkg.children.push(new UvTreeItem(toolName, vscode.TreeItemCollapsibleState.None, [], new vscode.ThemeIcon('gear'), 'uvCommand'));
+				}
+			}
+
+			this.uvToolRoot = new UvTreeItem('UV Tool List', vscode.TreeItemCollapsibleState.Expanded, uvToolChildren, new vscode.ThemeIcon('folder'));
+		} catch {
+			this.uvToolRoot = new UvTreeItem('UV Tool List', vscode.TreeItemCollapsibleState.None, [], new vscode.ThemeIcon('folder'));
+		}
+	}
+
+	getTreeItem(element: UvTreeItem): vscode.TreeItem {
 		return element;
 	}
 
-	getChildren(_element?: ProjectItem): Thenable<ProjectItem[]> {
-		return Promise.resolve(this.projects);
-	}
-
-	refresh(): void {
-		this._onDidChangeTreeData.fire();
+	getChildren(element?: UvTreeItem): Thenable<UvTreeItem[]> {
+		if (!element) {
+			// 顶层始终有两个分组
+			return Promise.resolve([this.lastTasksRoot, this.uvToolRoot!]);
+		}
+		return Promise.resolve(element.children);
 	}
 }

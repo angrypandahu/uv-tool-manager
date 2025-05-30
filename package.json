@@ -13,8 +13,9 @@
 	],
 	"activationEvents": [
 		"onView:myProjects",
-		"onCommand:extension.helloWorld",
-		"onCommand:myProjects.refresh"
+		"onCommand:myProjects.refresh",
+		"onCommand:myProjects.addProject",
+		"onCommand:myProjects.deleteProject"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -26,13 +27,56 @@
 			{
 				"command": "myProjects.refresh",
 				"title": "刷新项目列表"
+			},
+			{
+				"command": "myProjects.addProject",
+				"title": "添加项目"
+			},
+			{
+				"command": "myProjects.deleteProject",
+				"title": "删除项目"
+			},
+			{
+				"command": "myProjects.createCase",
+				"title": "创建用例"
 			}
 		],
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "myProjectsContainer",
+					"title": "项目管理器",
+					"icon": "media/uv.svg"
+				}
+			]
+		},
 		"views": {
-			"explorer": [
+			"myProjectsContainer": [
 				{
 					"id": "myProjects",
 					"name": "My Projects"
+				}
+			]
+		},
+		"menus": {
+			"view/title": [
+				{
+					"command": "myProjects.addProject",
+					"when": "view == myProjects",
+					"group": "navigation"
+				},
+				{
+					"command": "myProjects.refresh",
+					"when": "view == myProjects",
+					"group": "navigation"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "myProjects.createCase",
+					"when": "view == myProjects && viewItem == uvCommand",
+					"group": "inline",
+					"title": "创建用例"
 				}
 			]
 		}
