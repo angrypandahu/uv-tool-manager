@@ -39,6 +39,11 @@
 			{
 				"command": "myProjects.createCase",
 				"title": "创建用例"
+			},
+			{
+				"command": "myProjects.runCase",
+				"icon": "$(play)",
+				"title": "执行用例"
 			}
 		],
 		"viewsContainers": {
@@ -77,6 +82,12 @@
 					"when": "view == myProjects && viewItem == uvCommand",
 					"group": "inline",
 					"title": "创建用例"
+				},
+				{
+					"command": "myProjects.runCase",
+					"when": "view == myProjects && viewItem == uvCase",
+					"group": "inline",
+					"title": "$(play)"
 				}
 			]
 		}
