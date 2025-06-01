@@ -22,6 +22,58 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('myProjects.refresh', () => provider.refresh())
 	);
 
+	// 注册设置命令
+	context.subscriptions.push(
+		vscode.commands.registerCommand('myProjects.settings', async () => {
+			const settings = [
+				{
+					label: '清空最近任务',
+					description: '清除所有最近执行的任务记录'
+				},
+				{
+					label: '清空收藏夹',
+					description: '清除所有收藏的用例'
+				},
+				{
+					label: '管理快捷键',
+					description: '查看和管理用例的快捷键绑定'
+				},
+				{
+					label: '导出配置',
+					description: '导出当前所有配置到文件'
+				},
+				{
+					label: '导入配置',
+					description: '从文件导入配置'
+				}
+			];
+
+			const selected = await vscode.window.showQuickPick(settings, {
+				placeHolder: '选择设置选项'
+			});
+
+			if (selected) {
+				switch (selected.label) {
+					case '清空最近任务':
+						provider.clearLastTasks();
+						break;
+					case '清空收藏夹':
+						provider.clearFavorites();
+						break;
+					case '管理快捷键':
+						vscode.commands.executeCommand('myProjects.manageKeybindings');
+						break;
+					case '导出配置':
+						provider.exportSettings();
+						break;
+					case '导入配置':
+						provider.importSettings();
+						break;
+				}
+			}
+		})
+	);
+
 	// 注册搜索命令
 	context.subscriptions.push(
 		vscode.commands.registerCommand('myProjects.search', async () => {
@@ -85,6 +137,129 @@ export function activate(context: vscode.ExtensionContext) {
 			provider['removeFromFavorites'](item);
 		})
 	);
+
+	// 注册绑定快捷键命令
+	context.subscriptions.push(
+		vscode.commands.registerCommand('myProjects.bindKeybinding', (item: CaseTreeItem) => {
+			provider.bindKeybinding(item);
+		})
+	);
+
+	// 注册解除快捷键绑定命令
+	context.subscriptions.push(
+		vscode.commands.registerCommand('myProjects.unbindKeybinding', (keybinding: string) => {
+			provider.unbindKeybinding(keybinding);
+		})
+	);
+
+	// 注册通过快捷键执行用例命令
+	context.subscriptions.push(
+		vscode.commands.registerCommand('myProjects.runCaseWithKeybinding', (args: { caseName: string; caseCommand: string }) => {
+			if (args && args.caseCommand) {
+				const terminal = vscode.window.createTerminal(`用例: ${args.caseName}`);
+				terminal.show();
+				terminal.sendText(args.caseCommand);
+			}
+		})
+	);
+
+	// 注册管理快捷键命令（Webview弹窗，显示所有用例）
+	context.subscriptions.push(
+		vscode.commands.registerCommand('myProjects.manageKeybindings', () => {
+			const panel = vscode.window.createWebviewPanel(
+				'manageKeybindings',
+				'管理快捷键',
+				vscode.ViewColumn.One,
+				{ enableScripts: true }
+			);
+
+			function getAllCases() {
+				return provider.getAllCases();
+			}
+			function findKey(caseName: string, caseCommand: string) {
+				for (const [key, item] of provider['keybindings'].entries()) {
+					if (item.caseName === caseName && item.caseCommand === caseCommand) return key;
+				}
+				return '';
+			}
+
+			function getKeybindingsHtml(
+				allCases: { caseName: string, caseCommand: string }[]
+			) {
+				return `
+					<html>
+					<body>
+						<h2>所有用例快捷键管理</h2>
+						<table border="1" style="width:100%;border-collapse:collapse;">
+							<tr>
+								<th>用例名</th>
+								<th>命令</th>
+								<th>当前快捷键</th>
+								<th>操作</th>
+							</tr>
+							${allCases.map(c => {
+								const key = findKey(c.caseName, c.caseCommand);
+								const inputId = `key_${encodeURIComponent(c.caseName)}_${encodeURIComponent(c.caseCommand)}`;
+								return `
+									<tr>
+										<td>${c.caseName}</td>
+										<td><code>${c.caseCommand}</code></td>
+										<td>
+											${key ? key : `<input type="text" id="${inputId}" style="width:100px;" placeholder="未绑定" />`}
+										</td>
+										<td>
+											${key
+												? `<button onclick="unbind('${key}')">解绑</button>`
+												: `<button onclick="bind('${c.caseName}','${c.caseCommand}','${inputId}')">绑定</button>`
+											}
+										</td>
+									</tr>
+								`;
+							}).join('')}
+						</table>
+						<script>
+							const vscode = acquireVsCodeApi();
+							function unbind(key) {
+								vscode.postMessage({ command: 'unbind', key });
+							}
+							function bind(caseName, caseCommand, inputId) {
+								const key = document.getElementById(inputId).value;
+								vscode.postMessage({ command: 'bind', caseName, caseCommand, key });
+							}
+						</script>
+					</body>
+					</html>
+				`;
+			}
+
+			function refreshWebview() {
+				const allCases = getAllCases();
+				panel.webview.html = getKeybindingsHtml(allCases);
+			}
+
+			refreshWebview();
+
+			// 监听解绑和绑定事件
+			panel.webview.onDidReceiveMessage(
+				message => {
+					if (message.command === 'unbind') {
+						provider['unbindKeybinding'](message.key);
+					}
+					if (message.command === 'bind') {
+						if (message.key) {
+							provider['bindKeybinding'](
+								new CaseTreeItem(message.caseName, message.caseCommand)
+							);
+						}
+					}
+					// 刷新页面
+					refreshWebview();
+				},
+				undefined,
+				context.subscriptions
+			);
+		})
+	);
 }
 
 class UvTreeItem extends vscode.TreeItem {
@@ -128,6 +303,27 @@ interface PersistedCase {
 	caseCommand: string;
 }
 
+interface CaseData {
+	caseName: string;
+	caseCommand: string;
+}
+
+interface SettingsData {
+	lastTasks: CaseData[];
+	favorites: CaseData[];
+	keybindings: Record<string, CaseData>;
+}
+
+interface KeybindingConfig {
+	key: string;
+	command: string;
+	args: {
+		caseName: string;
+		caseCommand: string;
+	};
+	when: string;
+}
+
 class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 	private _onDidChangeTreeData: vscode.EventEmitter<UvTreeItem | undefined | void> = new vscode.EventEmitter<UvTreeItem | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<UvTreeItem | undefined | void> = this._onDidChangeTreeData.event;
@@ -140,10 +336,12 @@ class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 	private static CASES_KEY = 'uvCases';
 	private static LAST_TASKS_KEY = 'uvLastTasks';
 	private static FAVORITES_KEY = 'uvFavorites';
+	private static KEYBINDINGS_KEY = 'uvKeybindings';
 	private searchResults: UvTreeItem[] = [];
 	private isSearching = false;
 	private lastTasks: CaseTreeItem[] = [];
 	private favorites: CaseTreeItem[] = [];
+	private keybindings = new Map<string, CaseTreeItem>();
 
 	constructor(context: vscode.ExtensionContext) {
 		this.context = context;
@@ -152,6 +350,7 @@ class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 		this.uvToolRoot = new UvTreeItem('UV Tool List', vscode.TreeItemCollapsibleState.Expanded, [], new vscode.ThemeIcon('folder'));
 		this.loadLastTasks();
 		this.loadFavorites();
+		this.loadKeybindings();
 	}
 
 	private loadLastTasks() {
@@ -239,6 +438,79 @@ class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 			this.saveFavorites();
 			this._onDidChangeTreeData.fire(this.favoritesRoot);
 			vscode.window.showInformationMessage(`已从收藏夹移除: ${caseItem.caseName}`);
+		}
+	}
+
+	private loadKeybindings() {
+		const bindings = this.context.globalState.get<Record<string, CaseData>>(UvToolProvider.KEYBINDINGS_KEY, {});
+		this.keybindings.clear();
+		for (const [key, data] of Object.entries(bindings)) {
+			this.keybindings.set(key, new CaseTreeItem(data.caseName, data.caseCommand));
+		}
+	}
+
+	private saveKeybindings() {
+		const bindings: Record<string, CaseData> = {};
+		for (const [key, item] of this.keybindings.entries()) {
+			bindings[key] = {
+				caseName: item.caseName,
+				caseCommand: item.caseCommand
+			};
+		}
+		this.context.globalState.update(UvToolProvider.KEYBINDINGS_KEY, bindings);
+	}
+
+	async bindKeybinding(caseItem: CaseTreeItem) {
+		const keybinding = await vscode.window.showInputBox({
+			prompt: '请输入快捷键（例如：ctrl+shift+1）',
+			placeHolder: '快捷键'
+		});
+
+		if (keybinding) {
+			// 检查快捷键是否已被使用
+			if (this.keybindings.has(keybinding)) {
+				vscode.window.showWarningMessage(`快捷键 ${keybinding} 已被使用`);
+				return;
+			}
+
+			// 添加新的快捷键绑定
+			this.keybindings.set(keybinding, caseItem);
+			this.saveKeybindings();
+
+			// 更新 keybindings.json
+			const keybindingsConfig = vscode.workspace.getConfiguration('keyboard.dispatch');
+			const keybindings = keybindingsConfig.get<KeybindingConfig[]>('keybindings') || [];
+			
+			// 添加新的快捷键配置
+			keybindings.push({
+				key: keybinding,
+				command: 'myProjects.runCaseWithKeybinding',
+				args: {
+					caseName: caseItem.caseName,
+					caseCommand: caseItem.caseCommand
+				},
+				when: 'view == myProjects'
+			});
+
+			await keybindingsConfig.update('keybindings', keybindings, true);
+			vscode.window.showInformationMessage(`已绑定快捷键 ${keybinding} 到用例 ${caseItem.caseName}`);
+		}
+	}
+
+	async unbindKeybinding(keybinding: string) {
+		if (this.keybindings.has(keybinding)) {
+			this.keybindings.delete(keybinding);
+			this.saveKeybindings();
+
+			// 更新 keybindings.json
+			const keybindingsConfig = vscode.workspace.getConfiguration('keyboard.dispatch');
+			const keybindings = keybindingsConfig.get<KeybindingConfig[]>('keybindings') || [];
+			
+			// 移除快捷键配置
+			const newKeybindings = keybindings.filter(k => k.key !== keybinding);
+			await keybindingsConfig.update('keybindings', newKeybindings, true);
+
+			vscode.window.showInformationMessage(`已解除快捷键 ${keybinding} 的绑定`);
 		}
 	}
 
@@ -407,5 +679,128 @@ class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 		this.isSearching = false;
 		this.searchResults = [];
 		this._onDidChangeTreeData.fire();
+	}
+
+	clearLastTasks() {
+		this.lastTasks = [];
+		this.lastTasksRoot.children = [];
+		this.context.globalState.update(UvToolProvider.LAST_TASKS_KEY, []);
+		this._onDidChangeTreeData.fire(this.lastTasksRoot);
+		vscode.window.showInformationMessage('已清空最近任务');
+	}
+
+	clearFavorites() {
+		this.favorites = [];
+		this.favoritesRoot.children = [];
+		this.context.globalState.update(UvToolProvider.FAVORITES_KEY, []);
+		this._onDidChangeTreeData.fire(this.favoritesRoot);
+		vscode.window.showInformationMessage('已清空收藏夹');
+	}
+
+	async exportSettings() {
+		const settings: SettingsData = {
+			lastTasks: this.lastTasks.map(task => ({
+				caseName: task.caseName,
+				caseCommand: task.caseCommand
+			})),
+			favorites: this.favorites.map(fav => ({
+				caseName: fav.caseName,
+				caseCommand: fav.caseCommand
+			})),
+			keybindings: Object.fromEntries(
+				Array.from(this.keybindings.entries()).map(([key, item]) => [
+					key,
+					{
+						caseName: item.caseName,
+						caseCommand: item.caseCommand
+					}
+				])
+			)
+		};
+
+		const content = JSON.stringify(settings, null, 2);
+		const uri = await vscode.window.showSaveDialog({
+			filters: {
+				'JSON': ['json']
+			},
+			defaultUri: vscode.Uri.file('uv-tool-settings.json')
+		});
+
+		if (uri) {
+			try {
+				await vscode.workspace.fs.writeFile(uri, Buffer.from(content));
+				vscode.window.showInformationMessage('配置已导出');
+			} catch (error) {
+				vscode.window.showErrorMessage(`导出配置失败: ${error}`);
+			}
+		}
+	}
+
+	async importSettings() {
+		const uri = await vscode.window.showOpenDialog({
+			filters: {
+				'JSON': ['json']
+			},
+			canSelectMany: false
+		});
+
+		if (uri && uri[0]) {
+			try {
+				const content = await vscode.workspace.fs.readFile(uri[0]);
+				const settings = JSON.parse(content.toString()) as SettingsData;
+
+				if (settings.lastTasks) {
+					this.lastTasks = settings.lastTasks.map(task => 
+						new CaseTreeItem(task.caseName, task.caseCommand));
+					this.lastTasksRoot.children = this.lastTasks;
+					this.context.globalState.update(UvToolProvider.LAST_TASKS_KEY, settings.lastTasks);
+				}
+
+				if (settings.favorites) {
+					this.favorites = settings.favorites.map(fav => 
+						new CaseTreeItem(fav.caseName, fav.caseCommand, true));
+					this.favoritesRoot.children = this.favorites;
+					this.context.globalState.update(UvToolProvider.FAVORITES_KEY, settings.favorites);
+				}
+
+				if (settings.keybindings) {
+					this.keybindings.clear();
+					for (const [key, data] of Object.entries(settings.keybindings)) {
+						this.keybindings.set(key, new CaseTreeItem(data.caseName, data.caseCommand));
+					}
+					this.saveKeybindings();
+				}
+
+				this._onDidChangeTreeData.fire();
+				vscode.window.showInformationMessage('配置已导入');
+			} catch (error) {
+				vscode.window.showErrorMessage(`导入配置失败: ${error}`);
+			}
+		}
+	}
+
+	getAllCases(): { caseName: string, caseCommand: string }[] {
+		const caseSet = new Map<string, { caseName: string, caseCommand: string }>();
+		// UV Tool List
+		if (this.uvToolRoot) {
+			for (const pkg of this.uvToolRoot.children) {
+				for (const cmd of pkg.children) {
+					const key = this.getCommandKey(cmd);
+					const cases = this.commandCases.get(key) || [];
+					for (const c of cases) {
+						caseSet.set(c.caseName + c.caseCommand, { caseName: c.caseName, caseCommand: c.caseCommand });
+					}
+				}
+			}
+		}
+		// 收藏夹
+		for (const fav of this.favorites) {
+			caseSet.set(fav.caseName + fav.caseCommand, { caseName: fav.caseName, caseCommand: fav.caseCommand });
+		}
+		// 最近任务
+		for (const last of this.lastTasks) {
+			caseSet.set(last.caseName + last.caseCommand, { caseName: last.caseName, caseCommand: last.caseCommand });
+		}
+		return Array.from(caseSet.values());
 	}
 }

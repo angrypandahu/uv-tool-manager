@@ -63,6 +63,16 @@
 				"command": "myProjects.removeFromFavorites",
 				"icon": "$(star-delete)",
 				"title": "移除收藏"
+			},
+			{
+				"command": "myProjects.settings",
+				"icon": "$(settings-gear)",
+				"title": "设置"
+			},
+			{
+				"command": "myProjects.bindKeybinding",
+				"icon": "$(keyboard)",
+				"title": "绑定快捷键"
 			}
 		],
 		"viewsContainers": {
@@ -98,6 +108,11 @@
 					"command": "myProjects.search",
 					"when": "view == myProjects",
 					"group": "navigation"
+				},
+				{
+					"command": "myProjects.settings",
+					"when": "view == myProjects",
+					"group": "navigation"
 				}
 			],
 			"view/item/context": [
@@ -130,8 +145,32 @@
 					"when": "view == myProjects && viewItem == favoriteCase",
 					"group": "inline",
 					"title": "$(star-delete)"
+				},
+				{
+					"command": "myProjects.bindKeybinding",
+					"when": "view == myProjects && viewItem == uvCase",
+					"group": "inline",
+					"title": "$(keyboard)"
 				}
 			]
+		},
+		"keybindings": [
+			{
+				"command": "myProjects.runCaseWithKeybinding",
+				"key": "",
+				"mac": "",
+				"when": "view == myProjects"
+			}
+		],
+		"configuration": {
+			"title": "UV Tool Manager",
+			"properties": {
+				"uvToolManager.keybindings": {
+					"type": "object",
+					"default": {},
+					"description": "用例快捷键绑定配置"
+				}
+			}
 		}
 	},
 	"scripts": {
