@@ -1,10 +1,10 @@
 {
-	"name": "helloworld-sample",
-	"displayName": "helloworld-sample",
-	"description": "HelloWorld example for VS Code",
+	"name": "uv-tool-manager",
+	"displayName": "uv-tool-manager",
+	"description": "uv-tool-manager",
 	"version": "0.0.1",
-	"publisher": "vscode-samples",
-	"repository": "https://github.com/Microsoft/vscode-extension-samples/helloworld-sample",
+	"publisher": "angrypanda",
+	"repository": "https://github.com/angrypandahu/uv-tool-manager",
 	"engines": {
 		"vscode": "^1.74.0"
 	},
@@ -12,10 +12,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onView:myProjects",
-		"onCommand:myProjects.refresh",
-		"onCommand:myProjects.addProject",
-		"onCommand:myProjects.deleteProject"
+
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -26,6 +23,7 @@
 			},
 			{
 				"command": "myProjects.refresh",
+				"icon": "$(refresh)",
 				"title": "刷新项目列表"
 			},
 			{
@@ -50,6 +48,11 @@
 				"command": "myProjects.deleteCase",
 				"icon": "$(trash)",
 				"title": "删除用例"
+			},
+			{
+				"command": "myProjects.search",
+				"icon": "$(search)",
+				"title": "搜索命令和用例"
 			}
 		],
 		"viewsContainers": {
@@ -65,7 +68,7 @@
 			"myProjectsContainer": [
 				{
 					"id": "myProjects",
-					"name": "My Projects"
+					"name": "UV Projects"
 				}
 			]
 		},
@@ -78,6 +81,11 @@
 				},
 				{
 					"command": "myProjects.refresh",
+					"when": "view == myProjects",
+					"group": "navigation"
+				},
+				{
+					"command": "myProjects.search",
 					"when": "view == myProjects",
 					"group": "navigation"
 				}
