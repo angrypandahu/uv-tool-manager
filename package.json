@@ -53,6 +53,16 @@
 				"command": "myProjects.search",
 				"icon": "$(search)",
 				"title": "搜索命令和用例"
+			},
+			{
+				"command": "myProjects.addToFavorites",
+				"icon": "$(star-add)",
+				"title": "添加到收藏夹"
+			},
+			{
+				"command": "myProjects.removeFromFavorites",
+				"icon": "$(star-delete)",
+				"title": "移除收藏"
 			}
 		],
 		"viewsContainers": {
@@ -108,6 +118,18 @@
 					"when": "view == myProjects && viewItem == uvCase",
 					"group": "inline",
 					"title": "$(trash)"
+				},
+				{
+					"command": "myProjects.addToFavorites",
+					"when": "view == myProjects && viewItem == uvCase",
+					"group": "inline",
+					"title": "$(star-add)"
+				},
+				{
+					"command": "myProjects.removeFromFavorites",
+					"when": "view == myProjects && viewItem == favoriteCase",
+					"group": "inline",
+					"title": "$(star-delete)"
 				}
 			]
 		}

@@ -71,6 +71,20 @@ export function activate(context: vscode.ExtensionContext) {
 			provider.deleteCase(item);
 		})
 	);
+
+	// 注册添加到收藏夹命令
+	context.subscriptions.push(
+		vscode.commands.registerCommand('myProjects.addToFavorites', (item: CaseTreeItem) => {
+			provider['addToFavorites'](item);
+		})
+	);
+
+	// 注册从收藏夹移除命令
+	context.subscriptions.push(
+		vscode.commands.registerCommand('myProjects.removeFromFavorites', (item: CaseTreeItem) => {
+			provider['removeFromFavorites'](item);
+		})
+	);
 }
 
 class UvTreeItem extends vscode.TreeItem {
@@ -99,9 +113,10 @@ class UvTreeItem extends vscode.TreeItem {
 class CaseTreeItem extends UvTreeItem {
 	constructor(
 		public readonly caseName: string,
-		public readonly caseCommand: string
+		public readonly caseCommand: string,
+		public readonly isFavorite = false
 	) {
-		super(caseName, vscode.TreeItemCollapsibleState.None, [], new vscode.ThemeIcon('symbol-event'), 'uvCase');
+		super(caseName, vscode.TreeItemCollapsibleState.None, [], new vscode.ThemeIcon('symbol-event'), isFavorite ? 'favoriteCase' : 'uvCase');
 		this.tooltip = caseCommand;
 		this.description = caseCommand;
 	}
@@ -119,19 +134,24 @@ class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 
 	private uvToolRoot: UvTreeItem | null = null;
 	private lastTasksRoot: UvTreeItem;
+	private favoritesRoot: UvTreeItem;
 	private commandCases: Map<string, CaseTreeItem[]> = new Map<string, CaseTreeItem[]>();
 	private context: vscode.ExtensionContext;
 	private static CASES_KEY = 'uvCases';
 	private static LAST_TASKS_KEY = 'uvLastTasks';
+	private static FAVORITES_KEY = 'uvFavorites';
 	private searchResults: UvTreeItem[] = [];
-	private isSearching: boolean = false;
+	private isSearching = false;
 	private lastTasks: CaseTreeItem[] = [];
+	private favorites: CaseTreeItem[] = [];
 
 	constructor(context: vscode.ExtensionContext) {
 		this.context = context;
 		this.lastTasksRoot = new UvTreeItem('Last Tasks', vscode.TreeItemCollapsibleState.Collapsed, [], new vscode.ThemeIcon('folder'));
+		this.favoritesRoot = new UvTreeItem('Favorites', vscode.TreeItemCollapsibleState.Collapsed, [], new vscode.ThemeIcon('star'));
 		this.uvToolRoot = new UvTreeItem('UV Tool List', vscode.TreeItemCollapsibleState.Expanded, [], new vscode.ThemeIcon('folder'));
 		this.loadLastTasks();
+		this.loadFavorites();
 	}
 
 	private loadLastTasks() {
@@ -171,6 +191,55 @@ class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 		this.lastTasksRoot.children = this.lastTasks;
 		this.saveLastTasks();
 		this._onDidChangeTreeData.fire(this.lastTasksRoot);
+	}
+
+	private loadFavorites() {
+		const favs = this.context.globalState.get<{ caseName: string; caseCommand: string }[]>(UvToolProvider.FAVORITES_KEY, []);
+		this.favorites = favs.map(fav => new CaseTreeItem(fav.caseName, fav.caseCommand, true));
+		this.favoritesRoot.children = this.favorites;
+	}
+
+	private saveFavorites() {
+		const favs = this.favorites.map(fav => ({
+			caseName: fav.caseName,
+			caseCommand: fav.caseCommand
+		}));
+		this.context.globalState.update(UvToolProvider.FAVORITES_KEY, favs);
+	}
+
+	private addToFavorites(caseItem: CaseTreeItem) {
+		// 检查是否已存在
+		const existingIndex = this.favorites.findIndex(
+			fav => fav.caseName === caseItem.caseName && fav.caseCommand === caseItem.caseCommand
+		);
+
+		if (existingIndex === -1) {
+			// 如果不存在，添加到列表
+			const favoriteItem = new CaseTreeItem(caseItem.caseName, caseItem.caseCommand, true);
+			this.favorites.push(favoriteItem);
+			// 更新视图
+			this.favoritesRoot.children = this.favorites;
+			this.saveFavorites();
+			this._onDidChangeTreeData.fire(this.favoritesRoot);
+			vscode.window.showInformationMessage(`已添加到收藏夹: ${caseItem.caseName}`);
+		} else {
+			vscode.window.showInformationMessage(`已在收藏夹中: ${caseItem.caseName}`);
+		}
+	}
+
+	private removeFromFavorites(caseItem: CaseTreeItem) {
+		const index = this.favorites.findIndex(
+			fav => fav.caseName === caseItem.caseName && fav.caseCommand === caseItem.caseCommand
+		);
+
+		if (index !== -1) {
+			this.favorites.splice(index, 1);
+			// 更新视图
+			this.favoritesRoot.children = this.favorites;
+			this.saveFavorites();
+			this._onDidChangeTreeData.fire(this.favoritesRoot);
+			vscode.window.showInformationMessage(`已从收藏夹移除: ${caseItem.caseName}`);
+		}
 	}
 
 	async refresh() {
@@ -261,7 +330,7 @@ class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 
 		if (!element) {
 			console.log('[getChildren] 顶层节点');
-			return Promise.resolve([this.lastTasksRoot, this.uvToolRoot!]);
+			return Promise.resolve([this.lastTasksRoot, this.favoritesRoot, this.uvToolRoot!]);
 		}
 		if (element.contextValue === 'uvCommand') {
 			const key = this.getCommandKey(element);
@@ -271,6 +340,9 @@ class UvToolProvider implements vscode.TreeDataProvider<UvTreeItem> {
 		}
 		if (element === this.lastTasksRoot) {
 			return Promise.resolve(this.lastTasks);
+		}
+		if (element === this.favoritesRoot) {
+			return Promise.resolve(this.favorites);
 		}
 		console.log(`[getChildren] 其他节点: ${element.label}, children:`, element.children.map(c => c.label));
 		return Promise.resolve(element.children);
