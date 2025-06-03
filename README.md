@@ -65,7 +65,7 @@ uv-tool-manager/
 
 1. 克隆本仓库并安装依赖：
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/angrypandahu/uv-tool-manager.git
    cd uv-tool-manager
    npm install
    ```
