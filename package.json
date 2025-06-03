@@ -27,10 +27,6 @@
 				"title": "刷新项目列表"
 			},
 			{
-				"command": "myProjects.addProject",
-				"title": "添加项目"
-			},
-			{
 				"command": "myProjects.deleteProject",
 				"title": "删除项目"
 			},
@@ -68,11 +64,6 @@
 				"command": "myProjects.settings",
 				"icon": "$(settings-gear)",
 				"title": "设置"
-			},
-			{
-				"command": "myProjects.bindKeybinding",
-				"icon": "$(keyboard)",
-				"title": "绑定快捷键"
 			}
 		],
 		"viewsContainers": {
@@ -94,11 +85,6 @@
 		},
 		"menus": {
 			"view/title": [
-				{
-					"command": "myProjects.addProject",
-					"when": "view == myProjects",
-					"group": "navigation"
-				},
 				{
 					"command": "myProjects.refresh",
 					"when": "view == myProjects",
@@ -124,7 +110,7 @@
 				},
 				{
 					"command": "myProjects.runCase",
-					"when": "view == myProjects && viewItem == uvCase",
+					"when": "view == myProjects && (viewItem == uvCase || viewItem == favoriteCase)",
 					"group": "inline",
 					"title": "$(play)"
 				},
@@ -145,12 +131,6 @@
 					"when": "view == myProjects && viewItem == favoriteCase",
 					"group": "inline",
 					"title": "$(star-delete)"
-				},
-				{
-					"command": "myProjects.bindKeybinding",
-					"when": "view == myProjects && viewItem == uvCase",
-					"group": "inline",
-					"title": "$(keyboard)"
 				}
 			]
 		},

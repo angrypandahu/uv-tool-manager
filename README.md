@@ -1,87 +1,95 @@
 # UV Tool Manager VS Code 插件
 
-一个高效的 VS Code 项目/用例管理扩展，支持项目树、用例管理、快捷键绑定、收藏夹、最近任务、Webview 配置等功能。
+**UV Tool Manager** 是一款专为 [uv tool](https://github.com/your-uv-tool-link) 生态打造的 VS Code 扩展，帮助你在 VS Code 内高效管理所有 uv 工具、保存常用用例，并一键在终端执行。  
+适合频繁使用 uv 工具、需要批量管理和复用命令的开发者。
 
-## 主要功能
+---
 
-- 项目树视图展示与管理
-- 用例的创建、删除、执行
-- 用例收藏夹与最近任务
-- 用例/命令搜索
-- 用例快捷键绑定与管理（支持 Webview 图形界面）
-- 配置导入导出
-- 一键清空收藏夹/最近任务
+## 主要特性
+
+- **自动加载 uv 工具**  
+  启动时自动解析本地 `uv tool list`，分组展示所有可用工具。
+- **用例管理**  
+  支持为每个工具创建、保存、删除和编辑用例（如常用命令、参数组合等）。
+- **一键执行用例**  
+  选中用例即可在 VS Code 终端直接运行，无需手动输入命令。
+- **用例收藏夹与最近任务**  
+  常用用例可收藏，最近执行任务自动记录，便于快速复用。
+- **模糊搜索**  
+  支持对工具和用例的快速搜索定位。
+- **配置导入导出**  
+  一键备份/迁移所有用例和配置，数据安全有保障。
+
+---
+
+## 插件界面截图
+
+**主界面：**
+
+![主界面](media/screenshot0.png)
+![主界面](media/screenshot1.png)
+**添加用例**
+
+![添加用例](media/screenshot2.png)
+
+---
 
 ## 项目结构
 
 ```
-your-extension/
-├── .vscode/                  # VS Code 工作区配置（可选）
-├── media/                    # 存放 webview、图标、样式等静态资源
-│   └── uv.svg
-├── out/                      # 编译后的 JS 文件（自动生成）
-├── src/                      # 源码目录
-│   ├── extension.ts          # 插件主入口，只做注册和调度
-│   ├── tree/                 # 树视图相关代码
-│   │   ├── UvToolProvider.ts     # TreeDataProvider 及相关逻辑
-│   │   └── UvTreeItem.ts        # UvTreeItem/CaseTreeItem 等节点定义
-│   ├── commands/             # 命令注册与实现
-│   │   └── registerCommands.ts
-│   ├── webview/              # webview 相关逻辑
-│   │   └── keybindingPanel.ts    # 管理快捷键的 webview 面板
-│   └── utils/                # 工具函数、类型等（如有需要可扩展）
-├── package.json              # 插件描述、命令、菜单、激活事件等
-├── tsconfig.json             # TypeScript 配置
-├── README.md                 # 插件说明文档
-├── .gitignore
-├── package-lock.json
-└── ...（如 test、CI 配置等）
+uv-tool-manager/
+├── src/
+│   ├── extension.ts              # 插件主入口
+│   ├── views/                    # Webview 视图
+│   │   └── KeybindingsView.ts
+│   ├── services/                 # 业务服务
+│   │   ├── SettingsService.ts
+│   │   ├── CaseService.ts
+│   │   └── CommandService.ts
+│   ├── models/                   # 数据结构
+│   │   ├── Case.ts
+│   │   ├── Command.ts
+│   │   └── Settings.ts
+│   └── providers/                # 树视图数据提供者
+│       └── UvToolProvider.ts
+├── media/                        # 静态资源（截图、图标等）
+├── out/                          # 编译输出
+├── package.json                  # 插件描述、命令、菜单等
+├── tsconfig.json                 # TypeScript 配置
+└── ...
 ```
+
+---
 
 ## 安装与运行
 
 1. 克隆本仓库并安装依赖：
    ```bash
    git clone <your-repo-url>
-   cd your-extension
+   cd uv-tool-manager
    npm install
    ```
 2. 在 VS Code 中按 F5 启动调试，或运行 `Run Extension` 任务。
-3. 插件会在侧边栏显示"项目管理器"视图，右键菜单和顶部按钮可进行各类操作。
+3. 侧边栏会显示"项目管理器"视图，右键菜单和顶部按钮可进行各类操作。
+
+---
+
 
 ## 常见问题
 
-- **快捷键冲突/无效？**
-  - 请确保绑定的快捷键未被其他扩展或系统占用。
-  - 可在"管理快捷键"Webview中一键解绑或重新绑定。
+- **工具列表为空？**
+  - 请确保本地已正确安装 uv 工具，并能在命令行执行 `uv tool list`。
+- **用例无法执行？**
+  - 请检查用例命令格式，或在终端手动测试。
 - **数据丢失？**
   - 插件所有数据均存储在 VS Code 全局存储中，升级/重装不会丢失。
   - 可通过"导出配置/导入配置"功能备份和迁移。
 
+---
+
 ## 联系方式
 
 如有建议或问题，欢迎提 Issue 或联系作者：
-- GitHub: [your-github-url]
-- 邮箱: your@email.com
+- GitHub: [https://github.com/angrypandahu/uv-tool-manager]
+- 邮箱: angrypandahu@163.com
 
----
-
-![demo](demo.gif)
-
-## VS Code API
-
-### `vscode` module
-
-- [`commands.registerCommand`](https://code.visualstudio.com/api/references/vscode-api#commands.registerCommand)
-- [`window.showInformationMessage`](https://code.visualstudio.com/api/references/vscode-api#window.showInformationMessage)
-
-### Contribution Points
-
-- [`contributes.commands`](https://code.visualstudio.com/api/references/contribution-points#contributes.commands)
-
-## Running the Sample
-
-- Run `npm install` in terminal to install dependencies
-- Run the `Run Extension` target in the Debug View. This will:
-	- Start a task `npm: watch` to compile the code
-	- Run the extension in a new VS Code window

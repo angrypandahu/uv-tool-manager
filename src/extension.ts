@@ -9,12 +9,13 @@ import { KeybindingsView } from './views/KeybindingsView';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 	console.log('扩展开始激活...');
 
 	// 初始化服务
 	const commandService = new CommandService();
-	const caseService = new CaseService(context);
+	await commandService.loadCommands();
+	const caseService = new CaseService(context, commandService);
 	const settingsService = new SettingsService(context);
 
 	// 初始化视图提供者
@@ -44,10 +45,10 @@ export function activate(context: vscode.ExtensionContext) {
 					label: '清空收藏夹',
 					description: '清除所有收藏的用例'
 				},
-				{
-					label: '管理快捷键',
-					description: '查看和管理用例的快捷键绑定'
-				},
+				// {
+				// 	label: '管理快捷键',
+				// 	description: '查看和管理用例的快捷键绑定'
+				// },
 				{
 					label: '导出配置',
 					description: '导出当前所有配置到文件'

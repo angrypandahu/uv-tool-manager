@@ -156,6 +156,29 @@ export class SettingsService {
         }
     }
 
+    async bindKeybindingWithKey(key: string, caseItem: CaseTreeItem) {
+        if (this.keybindings.has(key)) {
+            vscode.window.showWarningMessage(`快捷键 ${key} 已被使用`);
+            return;
+        }
+        this.keybindings.set(key, caseItem);
+        this.saveKeybindings();
+
+        const keybindingsConfig = vscode.workspace.getConfiguration('keyboard.dispatch');
+        const keybindings = keybindingsConfig.get<KeybindingConfig[]>('keybindings') || [];
+        keybindings.push({
+            key: key,
+            command: 'myProjects.runCaseWithKeybinding',
+            args: {
+                caseName: caseItem.caseName,
+                caseCommand: caseItem.caseCommand
+            },
+            when: 'view == myProjects'
+        });
+        await keybindingsConfig.update('keybindings', keybindings, true);
+        vscode.window.showInformationMessage(`已绑定快捷键 ${key} 到用例 ${caseItem.caseName}`);
+    }
+
     clearLastTasks() {
         this.lastTasks = [];
         this.context.globalState.update(StorageKeys.LAST_TASKS, []);
