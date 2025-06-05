@@ -148,6 +148,11 @@ export class UvToolProvider implements vscode.TreeDataProvider<CommandTreeItem |
     }
 
     deleteCase(item: CaseTreeItem) {
+        if (item.contextValue === 'customCommand') {
+            this.settingsService.removeFromCustomFolders(item);
+            this._onDidChangeTreeData.fire(this.customFoldersRoot);
+            return;
+        }
         const parentCommand = this.caseService.deleteCase(item);
         if (parentCommand) {
             this._onDidChangeTreeData.fire(parentCommand);
