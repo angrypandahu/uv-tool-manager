@@ -16,7 +16,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const commandService = new CommandService();
 	await commandService.loadCommands();
 	const caseService = new CaseService(context, commandService);
-	const settingsService = new SettingsService(context);
+	const settingsService = new SettingsService(context, caseService);
 
 	// 初始化视图提供者
 	const provider = new UvToolProvider(context, commandService, caseService, settingsService);

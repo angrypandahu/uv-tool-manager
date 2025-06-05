@@ -1,9 +1,10 @@
 import { CaseData } from './Case';
 
 export interface SettingsData {
-    lastTasks: CaseData[];
     favorites: CaseData[];
+    lastTasks: CaseData[];
     keybindings: Record<string, CaseData>;
+    cases: CaseData[];
 }
 
 export interface KeybindingConfig {

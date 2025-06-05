@@ -1,15 +1,18 @@
 import * as vscode from 'vscode';
 import { CaseData, CaseTreeItem } from '../models/Case';
 import { KeybindingConfig, SettingsData, StorageKeys } from '../models/Settings';
+import { CaseService } from './CaseService';
 
 export class SettingsService {
     private lastTasks: CaseTreeItem[] = [];
     private favorites: CaseTreeItem[] = [];
     private keybindings = new Map<string, CaseTreeItem>();
     private context: vscode.ExtensionContext;
+    private caseService: CaseService;
 
-    constructor(context: vscode.ExtensionContext) {
+    constructor(context: vscode.ExtensionContext, caseService: CaseService) {
         this.context = context;
+        this.caseService = caseService;
         this.loadLastTasks();
         this.loadFavorites();
         this.loadKeybindings();
@@ -206,14 +209,15 @@ export class SettingsService {
 
     async exportSettings() {
         const settings: SettingsData = {
-            lastTasks: this.lastTasks.map(task => task.toCase().toData()),
             favorites: this.favorites.map(fav => fav.toCase().toData()),
+            lastTasks: this.lastTasks.map(task => task.toCase().toData()),
             keybindings: Object.fromEntries(
                 Array.from(this.keybindings.entries()).map(([key, item]) => [
                     key,
                     item.toCase().toData()
                 ])
-            )
+            ),
+            cases: this.caseService.getAllCases()
         };
 
         const content = JSON.stringify(settings, null, 2);
@@ -221,16 +225,14 @@ export class SettingsService {
             filters: {
                 'JSON': ['json']
             },
-            defaultUri: vscode.Uri.file('uv-tool-settings.json')
+            defaultUri: vscode.Uri.file('uv-tool-settings.json'),
+            saveLabel: '导出配置',
+            title: '导出 UV Tool 配置'
         });
 
         if (uri) {
-            try {
-                await vscode.workspace.fs.writeFile(uri, Buffer.from(content));
-                vscode.window.showInformationMessage('配置已导出');
-            } catch (error) {
-                vscode.window.showErrorMessage(`导出配置失败: ${error}`);
-            }
+            await vscode.workspace.fs.writeFile(uri, Buffer.from(content));
+            vscode.window.showInformationMessage('配置已成功导出');
         }
     }
 
