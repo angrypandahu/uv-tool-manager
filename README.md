@@ -1,5 +1,7 @@
 # UV Tool Manager VS Code 插件
 
+[English README](./README.en.md)
+
 **UV Tool Manager** 是一款专为 [uv tool](https://docs.astral.sh/uv/) 生态打造的 VS Code 扩展，帮助你在 VS Code 内高效管理所有 uv 工具、保存常用用例，并一键在终端执行。  
 适合频繁使用 uv 工具、需要批量管理和复用命令的开发者。
 
