@@ -7,6 +7,7 @@ export class SettingsService {
     private lastTasks: CaseTreeItem[] = [];
     private favorites: CaseTreeItem[] = [];
     private keybindings = new Map<string, CaseTreeItem>();
+    private customFolders: CaseTreeItem[] = [];
     private context: vscode.ExtensionContext;
     private caseService: CaseService;
 
@@ -16,6 +17,7 @@ export class SettingsService {
         this.loadLastTasks();
         this.loadFavorites();
         this.loadKeybindings();
+        this.loadCustomFolders();
     }
 
     private loadLastTasks() {
@@ -54,6 +56,20 @@ export class SettingsService {
         this.context.globalState.update(StorageKeys.KEYBINDINGS, bindings);
     }
 
+    private loadCustomFolders() {
+        const folders = this.context.globalState.get<CaseData[]>(StorageKeys.CUSTOM_FOLDERS, []);
+        this.customFolders = folders.map(folder => {
+            const item = new CaseTreeItem(folder.caseName, folder.caseCommand);
+            item.contextValue = 'customCommand';
+            return item;
+        });
+    }
+
+    private saveCustomFolders() {
+        const folders = this.customFolders.map(folder => folder.toCase().toData());
+        this.context.globalState.update(StorageKeys.CUSTOM_FOLDERS, folders);
+    }
+
     getLastTasks(): CaseTreeItem[] {
         return this.lastTasks;
     }
@@ -64,6 +80,10 @@ export class SettingsService {
 
     getKeybindings(): Map<string, CaseTreeItem> {
         return this.keybindings;
+    }
+
+    getCustomFolders(): CaseTreeItem[] {
+        return this.customFolders;
     }
 
     addToLastTasks(caseItem: CaseTreeItem) {
@@ -207,6 +227,12 @@ export class SettingsService {
         vscode.window.showInformationMessage('已清空收藏夹');
     }
 
+    clearCustomFolders() {
+        this.customFolders = [];
+        this.context.globalState.update(StorageKeys.CUSTOM_FOLDERS, []);
+        vscode.window.showInformationMessage('已清空自定义文件夹');
+    }
+
     async exportSettings() {
         const settings: SettingsData = {
             favorites: this.favorites.map(fav => fav.toCase().toData()),
@@ -217,7 +243,8 @@ export class SettingsService {
                     item.toCase().toData()
                 ])
             ),
-            cases: this.caseService.getAllCases()
+            cases: this.caseService.getAllCases(),
+            customFolders: this.customFolders.map(folder => folder.toCase().toData())
         };
 
         const content = JSON.stringify(settings, null, 2);
@@ -269,6 +296,12 @@ export class SettingsService {
                     this.saveKeybindings();
                 }
 
+                if (settings.customFolders) {
+                    this.customFolders = settings.customFolders.map(folder => 
+                        new CaseTreeItem(folder.caseName, folder.caseCommand));
+                    this.saveCustomFolders();
+                }
+
                 vscode.window.showInformationMessage('配置已导入');
             } catch (error) {
                 vscode.window.showErrorMessage(`导入配置失败: ${error}`);
@@ -294,6 +327,37 @@ export class SettingsService {
             caseSet.set(item.caseName + item.caseCommand, item.toCase().toData());
         }
         
+        // 从自定义文件夹中获取
+        for (const folder of this.customFolders) {
+            caseSet.set(folder.caseName + folder.caseCommand, folder.toCase().toData());
+        }
+        
         return Array.from(caseSet.values());
+    }
+
+    addToCustomFolders(caseItem: CaseTreeItem) {
+        const existingIndex = this.customFolders.findIndex(
+            folder => folder.caseName === caseItem.caseName && folder.caseCommand === caseItem.caseCommand
+        );
+
+        if (existingIndex === -1) {
+            const folderItem = new CaseTreeItem(caseItem.caseName, caseItem.caseCommand);
+            folderItem.contextValue = 'customCommand';
+            this.customFolders.push(folderItem);
+            this.saveCustomFolders();
+            vscode.window.showInformationMessage(`已添加到自定义文件夹: ${caseItem.caseName}`);
+        }
+    }
+
+    removeFromCustomFolders(caseItem: CaseTreeItem) {
+        const index = this.customFolders.findIndex(
+            folder => folder.caseName === caseItem.caseName && folder.caseCommand === caseItem.caseCommand
+        );
+
+        if (index !== -1) {
+            this.customFolders.splice(index, 1);
+            this.saveCustomFolders();
+            vscode.window.showInformationMessage(`已从自定义文件夹中移除: ${caseItem.caseName}`);
+        }
     }
 } 

@@ -6,6 +6,7 @@ import { CommandService } from './services/CommandService';
 import { SettingsService } from './services/SettingsService';
 import { UvToolProvider } from './providers/UvToolProvider';
 import { KeybindingsView } from './views/KeybindingsView';
+import { CaseTreeItem } from './models/Case';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -112,6 +113,25 @@ export async function activate(context: vscode.ExtensionContext) {
 			});
 			if (!caseCommand) {return;}
 			provider.addCaseToCommand(item, caseName, caseCommand);
+		})
+	);
+
+	// 注册新增自定义命令
+	context.subscriptions.push(
+		vscode.commands.registerCommand('uv-tool.addNewCommand', async () => {
+			const caseName = await vscode.window.showInputBox({
+				prompt: '请输入命令名称',
+				placeHolder: '命令名称'
+			});
+			if (!caseName) {return;}
+			const caseCommand = await vscode.window.showInputBox({
+				prompt: '请输入命令内容',
+				placeHolder: '命令内容'
+			});
+			if (!caseCommand) {return;}
+			const caseItem = new CaseTreeItem(caseName, caseCommand);
+			settingsService.addToCustomFolders(caseItem);
+			provider.refresh();
 		})
 	);
 

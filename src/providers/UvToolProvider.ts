@@ -11,6 +11,7 @@ export class UvToolProvider implements vscode.TreeDataProvider<CommandTreeItem |
 
     private lastTasksRoot: CommandTreeItem;
     private favoritesRoot: CommandTreeItem;
+    private customFoldersRoot: CommandTreeItem;
     private searchResults: (CommandTreeItem | CaseTreeItem)[] = [];
     private isSearching = false;
 
@@ -32,6 +33,14 @@ export class UvToolProvider implements vscode.TreeDataProvider<CommandTreeItem |
             [],
             new vscode.ThemeIcon('star')
         );
+        this.customFoldersRoot = new CommandTreeItem(
+            'Custom Folders',
+            vscode.TreeItemCollapsibleState.Collapsed,
+            [],
+            new vscode.ThemeIcon('folder')
+        );
+
+   
     }
 
     async refresh() {
@@ -54,7 +63,7 @@ export class UvToolProvider implements vscode.TreeDataProvider<CommandTreeItem |
         }
 
         if (!element) {
-            return [this.lastTasksRoot, this.favoritesRoot, this.commandService.getRoot()!];
+            return [this.lastTasksRoot, this.favoritesRoot, this.customFoldersRoot,  this.commandService.getRoot()!];
         }
         if (element.contextValue === 'uvCommand') {
             return this.caseService.getCasesForCommand(element as CommandTreeItem);
@@ -72,6 +81,10 @@ export class UvToolProvider implements vscode.TreeDataProvider<CommandTreeItem |
             return this.settingsService.getFavorites();
         }
 
+        if (element === this.customFoldersRoot) {
+            return this.settingsService.getCustomFolders();
+        }
+
         if (element instanceof CommandTreeItem) {
             return element.children;
         }
@@ -87,17 +100,36 @@ export class UvToolProvider implements vscode.TreeDataProvider<CommandTreeItem |
         if (root) {
             for (const pkg of root.children) {
                 for (const cmd of pkg.children) {
-                    if (cmd.label.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    if (typeof cmd.label === 'string' && cmd.label.toLowerCase().includes(searchTerm.toLowerCase())) {
                         this.searchResults.push(cmd);
                     }
                     const cases = this.caseService.getCasesForCommand(cmd);
                     for (const c of cases) {
-                        if (c.caseName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            c.caseCommand.toLowerCase().includes(searchTerm.toLowerCase())) {
+                        if (
+                            c.caseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            c.caseCommand.toLowerCase().includes(searchTerm.toLowerCase())
+                        ) {
                             this.searchResults.push(c);
                         }
                     }
                 }
+            }
+        }
+
+        // 搜索 Custom Folders 里的自定义命令
+        const customFolders = this.settingsService.getCustomFolders();
+        for (const custom of customFolders) {
+            let labelStr = '';
+            if (typeof custom.label === 'string') {
+                labelStr = custom.label;
+            } else if (custom.label && typeof custom.label.label === 'string') {
+                labelStr = custom.label.label;
+            }
+            if (
+                labelStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (typeof custom.description === 'string' && custom.description.toLowerCase().includes(searchTerm.toLowerCase()))
+            ) {
+                this.searchResults.push(custom);
             }
         }
 

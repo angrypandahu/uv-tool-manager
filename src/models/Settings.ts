@@ -5,6 +5,7 @@ export interface SettingsData {
     lastTasks: CaseData[];
     keybindings: Record<string, CaseData>;
     cases: CaseData[];
+    customFolders: CaseData[];
 }
 
 export interface KeybindingConfig {
@@ -22,4 +23,5 @@ export class StorageKeys {
     static readonly LAST_TASKS = 'uvLastTasks';
     static readonly FAVORITES = 'uvFavorites';
     static readonly KEYBINDINGS = 'uvKeybindings';
+    static readonly CUSTOM_FOLDERS = 'uvCustomFolders';
 } 

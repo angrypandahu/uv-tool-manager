@@ -70,6 +70,11 @@
 				"command": "myProjects.settings",
 				"icon": "$(settings-gear)",
 				"title": "设置"
+			},
+			{
+				"command": "uv-tool.addNewCommand",
+				"icon": "$(add)",
+				"title": "添加自定义命令"
 			}
 		],
 		"viewsContainers": {
@@ -105,6 +110,12 @@
 					"command": "myProjects.settings",
 					"when": "view == myProjects",
 					"group": "navigation"
+				},
+				{
+					"command": "uv-tool.addNewCommand",
+					"when": "view == myProjects",
+					"group": "navigation",
+					"title": "$(add)"
 				}
 			],
 			"view/item/context": [
@@ -116,13 +127,13 @@
 				},
 				{
 					"command": "myProjects.runCase",
-					"when": "view == myProjects && (viewItem == uvCase || viewItem == favoriteCase || viewItem == lastTask)",
+					"when": "view == myProjects && (viewItem == uvCase || viewItem == favoriteCase || viewItem == lastTask || viewItem == customCommand)",
 					"group": "inline",
 					"title": "$(play)"
 				},
 				{
 					"command": "myProjects.deleteCase",
-					"when": "view == myProjects && viewItem == uvCase",
+					"when": "view == myProjects && (viewItem == uvCase || viewItem == customCommand)",
 					"group": "inline",
 					"title": "$(trash)"
 				},
@@ -134,7 +145,7 @@
 				},
 				{
 					"command": "myProjects.addToFavorites",
-					"when": "view == myProjects && (viewItem == uvCase || viewItem == lastTask)",
+					"when": "view == myProjects && (viewItem == uvCase || viewItem == lastTask || viewItem == customCommand)",
 					"group": "inline",
 					"title": "$(star-add)"
 				},
