@@ -68,14 +68,29 @@ export class CaseService {
     }
 
     deleteCase(item: CaseTreeItem) {
-        for (const [, cases] of this.commandCases.entries()) {
+        let parentCommand: CommandTreeItem | undefined;
+        for (const [commandKey, cases] of this.commandCases.entries()) {
             const idx = cases.findIndex(c => c.caseName === item.caseName && c.caseCommand === item.caseCommand);
             if (idx !== -1) {
                 cases.splice(idx, 1);
+                // 找到父命令
+                const root = this.commandService.getRoot();
+                if (root) {
+                    for (const pkg of root.children) {
+                        for (const cmd of pkg.children) {
+                            if (cmd.getCommandKey() === commandKey) {
+                                parentCommand = cmd;
+                                break;
+                            }
+                        }
+                        if (parentCommand) break;
+                    }
+                }
                 this.savePersistedCases();
                 break;
             }
         }
+        return parentCommand;
     }
 
     getAllCases(): CaseData[] {

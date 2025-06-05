@@ -47,6 +47,11 @@
 				"title": "删除用例"
 			},
 			{
+				"command": "myProjects.removeFromLastTasks",
+				"icon": "$(trash)",
+				"title": "从最近任务中移除"
+			},
+			{
 				"command": "myProjects.search",
 				"icon": "$(search)",
 				"title": "搜索命令和用例"
@@ -58,7 +63,7 @@
 			},
 			{
 				"command": "myProjects.removeFromFavorites",
-				"icon": "$(star-delete)",
+				"icon": "$(trash)",
 				"title": "移除收藏"
 			},
 			{
@@ -111,7 +116,7 @@
 				},
 				{
 					"command": "myProjects.runCase",
-					"when": "view == myProjects && (viewItem == uvCase || viewItem == favoriteCase)",
+					"when": "view == myProjects && (viewItem == uvCase || viewItem == favoriteCase || viewItem == lastTask)",
 					"group": "inline",
 					"title": "$(play)"
 				},
@@ -122,8 +127,14 @@
 					"title": "$(trash)"
 				},
 				{
+					"command": "myProjects.removeFromLastTasks",
+					"when": "view == myProjects && viewItem == lastTask",
+					"group": "inline",
+					"title": "$(trash)"
+				},
+				{
 					"command": "myProjects.addToFavorites",
-					"when": "view == myProjects && viewItem == uvCase",
+					"when": "view == myProjects && (viewItem == uvCase || viewItem == lastTask)",
 					"group": "inline",
 					"title": "$(star-add)"
 				},

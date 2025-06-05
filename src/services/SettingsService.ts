@@ -17,7 +17,7 @@ export class SettingsService {
 
     private loadLastTasks() {
         const tasks = this.context.globalState.get<CaseData[]>(StorageKeys.LAST_TASKS, []);
-        this.lastTasks = tasks.map(task => new CaseTreeItem(task.caseName, task.caseCommand));
+        this.lastTasks = tasks.map(task => new CaseTreeItem(task.caseName, task.caseCommand, false, true));
     }
 
     private saveLastTasks() {
@@ -72,13 +72,28 @@ export class SettingsService {
             this.lastTasks.splice(existingIndex, 1);
         }
 
-        this.lastTasks.unshift(caseItem);
+        const newItem = new CaseTreeItem(caseItem.caseName, caseItem.caseCommand, false, true);
+        newItem.contextValue = 'lastTask';
+        this.lastTasks.unshift(newItem);
 
         if (this.lastTasks.length > 10) {
             this.lastTasks.pop();
         }
 
         this.saveLastTasks();
+        vscode.window.showInformationMessage(`已添加到最近任务: ${caseItem.caseName}`);
+    }
+
+    removeFromLastTasks(caseItem: CaseTreeItem) {
+        const index = this.lastTasks.findIndex(
+            task => task.caseName === caseItem.caseName && task.caseCommand === caseItem.caseCommand
+        );
+
+        if (index !== -1) {
+            this.lastTasks.splice(index, 1);
+            this.saveLastTasks();
+            vscode.window.showInformationMessage(`已从最近任务中移除: ${caseItem.caseName}`);
+        }
     }
 
     addToFavorites(caseItem: CaseTreeItem) {
@@ -91,8 +106,6 @@ export class SettingsService {
             this.favorites.push(favoriteItem);
             this.saveFavorites();
             vscode.window.showInformationMessage(`已添加到收藏夹: ${caseItem.caseName}`);
-        } else {
-            vscode.window.showInformationMessage(`已在收藏夹中: ${caseItem.caseName}`);
         }
     }
 

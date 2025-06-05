@@ -61,7 +61,11 @@ export class UvToolProvider implements vscode.TreeDataProvider<CommandTreeItem |
         }
 
         if (element === this.lastTasksRoot) {
-            return this.settingsService.getLastTasks();
+            const tasks = this.settingsService.getLastTasks();
+            tasks.forEach(task => {
+                task.contextValue = 'lastTask';
+            });
+            return tasks;
         }
 
         if (element === this.favoritesRoot) {
@@ -112,23 +116,30 @@ export class UvToolProvider implements vscode.TreeDataProvider<CommandTreeItem |
     }
 
     deleteCase(item: CaseTreeItem) {
-        this.caseService.deleteCase(item);
-        this._onDidChangeTreeData.fire();
+        const parentCommand = this.caseService.deleteCase(item);
+        if (parentCommand) {
+            this._onDidChangeTreeData.fire(parentCommand);
+        } else {
+            this._onDidChangeTreeData.fire();
+        }
     }
 
     addToLastTasks(caseItem: CaseTreeItem) {
         this.settingsService.addToLastTasks(caseItem);
         this._onDidChangeTreeData.fire(this.lastTasksRoot);
+        this.refresh();
     }
 
     addToFavorites(caseItem: CaseTreeItem) {
         this.settingsService.addToFavorites(caseItem);
         this._onDidChangeTreeData.fire(this.favoritesRoot);
+        this.refresh();
     }
 
     removeFromFavorites(caseItem: CaseTreeItem) {
         this.settingsService.removeFromFavorites(caseItem);
         this._onDidChangeTreeData.fire(this.favoritesRoot);
+        this.refresh();
     }
 
     async bindKeybinding(caseItem: CaseTreeItem) {
@@ -156,5 +167,11 @@ export class UvToolProvider implements vscode.TreeDataProvider<CommandTreeItem |
     async importSettings() {
         await this.settingsService.importSettings();
         this._onDidChangeTreeData.fire();
+    }
+
+    removeFromLastTasks(caseItem: CaseTreeItem) {
+        this.settingsService.removeFromLastTasks(caseItem);
+        this._onDidChangeTreeData.fire(this.lastTasksRoot);
+        this.refresh();
     }
 } 

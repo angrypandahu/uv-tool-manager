@@ -123,6 +123,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				terminal.show();
 				terminal.sendText(item.caseCommand);
 				settingsService.addToLastTasks(item);
+				provider.refresh();
 			}
 		})
 	);
@@ -134,10 +135,19 @@ export async function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
+	// 注册从最近任务中移除命令
+	context.subscriptions.push(
+		vscode.commands.registerCommand('myProjects.removeFromLastTasks', (item) => {
+			settingsService.removeFromLastTasks(item);
+			provider.refresh();
+		})
+	);
+
 	// 注册添加到收藏夹命令
 	context.subscriptions.push(
 		vscode.commands.registerCommand('myProjects.addToFavorites', (item) => {
 			settingsService.addToFavorites(item);
+			provider.refresh();
 		})
 	);
 
@@ -145,6 +155,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('myProjects.removeFromFavorites', (item) => {
 			settingsService.removeFromFavorites(item);
+			provider.refresh();
 		})
 	);
 

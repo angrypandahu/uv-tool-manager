@@ -28,13 +28,24 @@ export class CaseTreeItem extends vscode.TreeItem {
     constructor(
         public readonly caseName: string,
         public readonly caseCommand: string,
-        public readonly isFavorite = false
+        public readonly isFavorite = false,
+        public readonly isLastTask = false
     ) {
         super(caseName, vscode.TreeItemCollapsibleState.None);
         this.tooltip = caseCommand;
         this.description = caseCommand;
         this.iconPath = new vscode.ThemeIcon('symbol-event');
-        this.contextValue = isFavorite ? 'favoriteCase' : 'uvCase';
+        this.setContextValue();
+    }
+
+    private setContextValue() {
+        if (this.isLastTask) {
+            this.contextValue = 'lastTask';
+        } else if (this.isFavorite) {
+            this.contextValue = 'favoriteCase';
+        } else {
+            this.contextValue = 'uvCase';
+        }
     }
 
     toCase(): Case {
